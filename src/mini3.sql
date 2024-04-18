@@ -195,7 +195,7 @@ SELECT
     CTPhieuNhap.VatTu_id AS 'Mã vật tư',
     VatTu.TenVT AS 'Tên vật tư',
     CTPhieuNhap.SoLuongNhap AS 'Số lượng nhập',
-    DonHang.NhaCungCap_id AS 'Nha cung cap',
+    DonHang.NhaCungCap_id AS 'Nhà cung cấp',
     CTPhieuNhap.DonGiaNhap AS 'Đơn giá nhập',
     (CTPhieuNhap.SoLuongNhap * CTPhieuNhap.DonGiaNhap) AS 'Thành tiền nhập',
     PhieuNhap.NgayNhap AS 'Ngày nhập hàng',
@@ -204,4 +204,129 @@ FROM CTPhieuNhap
          INNER JOIN VatTu ON CTPhieuNhap.VatTu_id = VatTu.id
          INNER JOIN PhieuNhap ON CTPhieuNhap.PhieuNhap_id = PhieuNhap.id
          INNER JOIN DonHang ON PhieuNhap.DonHang_id = DonHang.id
-         INNER JOIN NhaCungCap NCC on DonHang.NhaCungCap_id = NCC.id;
+         INNER JOIN NhaCungCap NCC on DonHang.NhaCungCap_id = DonHang.id;
+# Cau 5
+create view vw_CTPNHAP_loc as
+select
+    PhieuNhap_id as 'Số phiếu nhập hàng',
+    VATTU_id as 'Mã vật tư',
+    SoLuongNhap as 'Số lượng nhập',
+    DonGiaNhap as 'Đơn giá nhập',
+    (CTPhieuNhap.SoLuongNhap * CTPhieuNhap.DonGiaNhap) as 'Thành tiền nhập'
+from CTPhieuNhap
+where CTPhieuNhap.SoLuongNhap > 5;
+
+# Cau 6
+CREATE VIEW vw_CTPNHAP_VT_loc AS
+SELECT
+    pnh.id AS so_phieu_nhap,
+    vt.id AS ma_vat_tu,
+    vt.TenVT AS ten_vat_tu,
+    ctp.SoLuongNhap AS so_luong_nhap,
+    ctp.DonGiaNhap AS don_gia_nhap,
+    (ctp.SoLuongNhap * ctp.DonGiaNhap) AS thanh_tien_nhap
+FROM
+    CTPhieuNhap ctp
+        JOIN
+    PhieuNhap pnh ON ctp.PhieuNhap_id = pnh.id
+        JOIN
+    VATTU vt ON ctp.VATTU_id = vt.id
+WHERE
+    vt.DonViTinh = 'Cái';
+
+# Cau 7
+create view vw_CTPXUAT as
+select
+    PhieuXuat_id as 'Số phiếu xuất hàng',
+    VATTU_id as 'Mã vật tư',
+    SoLuongXuat as 'Số lượng xuất',
+    DonGiaXuat as 'Đơn giá xuất',
+    (CTPhieuXuat.SoLuongXuat * CTPhieuXuat.DonGiaXuat) as 'Thành tiền xuất'
+from CTPhieuXuat;
+
+#  Cau 8
+create view vw_CTPXUAT_VT as
+select
+    PhieuXuat_id as 'Số phiếu xuất hàng',
+    VATTU_id as 'Mã vật tư',
+    TenVT as 'Tên vật tư',
+    SoLuongXuat as 'Số lượng xuất',
+    DonGiaXuat as 'Đơn giá xuất'
+from CTPhieuXuat
+         join VATTU on VATTU.id = CTPhieuXuat.VATTU_id;
+
+#  Cau 1
+delimiter //
+
+create procedure TongSoLuongCuoiVT(in vattu_id int)
+begin
+    select
+        VATTU_id,
+        (SLDau + sum(TongSlNhap) - sum(TongSLXuat)) as final_quantity
+    from
+        TONKHO
+    where
+        VATTU_id = vattu_id
+    group by
+        VATTU_id;
+end //
+
+delimiter ;
+# Cau 2
+delimiter //
+
+create procedure TongTienXuatVT(in VatTu_id int)
+begin
+    select
+        VatTu_id,
+        SUM(SoLuongXuat * DonGiaXuat) as total_sales
+    from
+        CTPhieuXuat
+    where
+        VatTu_id = VatTu_id
+    group by
+        VatTu_id;
+end //
+
+delimiter ;
+# Cau 3
+delimiter //
+
+create procedure TongSoLuongDat(in DonDH_id int)
+begin
+    select
+        DonDH_id,
+        SUM(SoLuongDat) AS Tong_SoLuong
+    from
+        CTDonHang
+    where
+        DonDH_id = DonDH_id
+    group by
+        DonDH_id;
+end //
+
+delimiter ;
+# Cau 4
+delimiter //
+
+create procedure ThemDonHang(in NgayDatHang date, in NhaCungCap_id int)
+begin
+    insert into DonHang (NgayDatHang, NhaCungCap_id)
+    values (NgayDatHang, NhaCungCap_id);
+end //
+
+delimiter ;
+#  Cau 5
+delimiter //
+
+create procedure XoaNhaCungCap(IN NhaCungCap_id INT)
+begin
+    update DonHang
+    set NhaCungCap_id = null
+    where NhaCungCap_id = NhaCungCap_id;
+
+    delete from NhaCungCap
+    where id = NhaCungCap_id;
+end //
+
+delimiter ;
